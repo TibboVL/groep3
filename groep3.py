@@ -25,6 +25,11 @@ conn.request("POST", "/1/messages.json",
   }), { "Content-type": "application/x-www-form-urlencoded" })
 conn.getresponse()
 
+# ubeac
+import requests
+url = "http://groep3.hub.ubeac.io/groep3"
+uid = "groep3"
+
 # Initialize SPI bus
 spi = busio.SPI(board.SCK, MOSI=board.MOSI, MISO=board.MISO)
 
@@ -102,6 +107,21 @@ try:
                 "message": "Hive is too hot!",
             }), { "Content-type": "application/x-www-form-urlencoded" })
             conn.getresponse()
+
+        data= {
+        "id": uid,
+        "sensors":[
+            {
+	        'id': 'temperatuur',
+	        'data': temperature
+	        },
+            {
+	        'id': 'weight',
+	        'data': weight
+	        }
+            ]
+        }
+        r = requests.post(url, verify=False,  json=data)
 
         
         time.sleep(.5) #run main loop each second
