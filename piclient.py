@@ -31,38 +31,9 @@ url = "http://groep3.hub.ubeac.io/groep3"
 uid = "groep3"
 
 
-# BLE
 MAC = "E0:E2:E6:9D:0F:DA"
 MAC2 = "E0:E2:E6:9B:A4:4E"
-SERVICE_UUID = "ff1f7f47-ec50-4b76-9145-24527939bd0e"
-SERVICE_UUID2 = "211c5eea-2899-4de3-80f9-e22344cb6019"
 
-
-print("Connect to:" + MAC)
-
-connectCount1 = 1
-connectCount2 = 1
-
-while True:
-    try:
-        dev = btle.Peripheral(MAC)
-        break
-    except:
-        time.sleep(.2)
-        connectCount1 += 1
-        print(str(connectCount1) + "\t failed to connect to device 1...retrying")
-
-
-while True:
-    try:
-        dev2 = btle.Peripheral(MAC2)
-        break
-    except:
-        time.sleep(.2)
-        connectCount2 += 1
-        print(str(connectCount2) + "\t failed to connect to device 2...retrying")
-
-print("connected succesfully!")
 
 #uuids to connect to and read out
 temperatureUUID = "a259ab92-cbe6-4412-b44f-0ef3e2247bcc"
@@ -74,52 +45,83 @@ weightUUID2 = "42480b98-e8fc-4cca-a8ea-85e828c658a2"
 LightUUID = "71147fea-e715-479b-9a5a-5286b49d327c"
 LightUUID2 = "8408d6f3-f644-4b3b-b0bc-224592d94094"
 
-
-# get the service
-service = dev.getServiceByUUID(SERVICE_UUID)
-service2 = dev2.getServiceByUUID(SERVICE_UUID2)
-#setup variables for all uuids
 global Light
-Light = dev.getCharacteristics(uuid=LightUUID)
 global Light2
-Light2 = dev2.getCharacteristics(uuid=LightUUID2)
 
-temperature = dev.getCharacteristics(uuid=temperatureUUID)
-temperature2 = dev2.getCharacteristics(uuid=temperatureUUID2)
+connectCount1 = 0
+connectCount2 = 0
 
-weight = dev.getCharacteristics(uuid=weightUUID)
-weight2 = dev2.getCharacteristics(uuid=weightUUID2)
+print("Connecting to device 1: " + MAC)
+while True:
+    try:
+        dev = btle.Peripheral(MAC)
+        temperature = dev.getCharacteristics(uuid=temperatureUUID)
+        Light = dev.getCharacteristics(uuid=LightUUID)
+        weight = dev.getCharacteristics(uuid=weightUUID)
+        break
+    except:
+        time.sleep(.2)
+        connectCount1 += 1
+        print(str(connectCount1) + "\t failed to connect to device 1 ... retrying")
+
+print("connected to device 1: " + MAC)
+print("Connecting to device 2: " + MAC2)
+while True:
+    try:
+        dev2 = btle.Peripheral(MAC2)
+        Light2 = dev2.getCharacteristics(uuid=LightUUID2)
+        temperature2 = dev2.getCharacteristics(uuid=temperatureUUID2)
+        weight2 = dev2.getCharacteristics(uuid=weightUUID2)
+        break
+    except:
+        time.sleep(.2)
+        connectCount2 += 1
+        print(str(connectCount2) + "\t failed to connect to device 2 ... retrying")
+
+print("connected to device 2: " + MAC)
+print("connected to both devices succesfully!")
 
 #bluedot
-def checkApp(name, delay, buttonnumber):
+def checkApp(name, delay):
     global Light
+    lampStatus = False
+    while True:
+        # wait for button press
+        bd[0,0].wait_for_press()
+        print("You pressed button 1")
+        if not lampStatus:
+            lampStatus = True
+            byte_message = bytes("ON", 'utf-8')
+            Light[0].write(byte_message)
+        else:
+            lampStatus = False
+            byte_message = bytes("OFF", 'utf-8')
+            Light[0].write(byte_message)
+        
+        if exit_event.is_set():
+            break
+
+def checkApp2(name, delay):
     global Light2
     lampStatus = False
     while True:
         # wait for button press
-        bd[0,buttonnumber].wait_for_press()
-
+        bd[0,1].wait_for_press()
+        print("You pressed button 2" )
         if not lampStatus:
             lampStatus = True
             byte_message = bytes("ON", 'utf-8')
-            if buttonnumber == 0:
-                Light[0].write(byte_message)
-            else:
-                Light2[0].write(byte_message)
+            Light2[0].write(byte_message)
         else:
             lampStatus = False
             byte_message = bytes("OFF", 'utf-8')
-            if buttonnumber == 0:
-                Light[0].write(byte_message)
-            else:
-                Light2[0].write(byte_message)
-        print("You pressed the blue dot!")
-
+            Light2[0].write(byte_message)
+        
         if exit_event.is_set():
             break
 
-checkApp = threading.Thread(target=checkApp, args=("Check App", 1, 0))
-checkApp2 = threading.Thread(target=checkApp, args=("Check App", 1, 1))
+checkApp = threading.Thread(target=checkApp, args=("Check App 1", 1))
+checkApp2 = threading.Thread(target=checkApp2, args=("Check App 2", 1))
 ## start thread
 checkApp.start()
 checkApp2.start()
@@ -127,21 +129,22 @@ checkApp2.start()
 
 try:
     while True:
-
+        #dev.connect(MAC)
+        #dev2.connect(MAC2)
         
-        
+        print("\nHive1: \n---------------------")
         newtemperature = temperature[0].read().decode("utf-8") 
-        print("Temperature = " + newtemperature + "°C")
+        print("Temperature: \t" + newtemperature[:-3] + "°C")
 
-        newtemperature2 = temperature2[0].read().decode("utf-8") 
-        print("Temperature2 = " + newtemperature2 + "°C")
-
-        
         newweight = weight[0].read().decode("utf-8") 
-        print("Weight = " + newweight + "kg")
+        print("Weight: \t" + newweight[:-3] + "kg")
+
+        print("\nHive2: \n---------------------")
+        newtemperature2 = temperature2[0].read().decode("utf-8") 
+        print("Temperature: \t" + newtemperature2[:-3] + "°C")
 
         newweight2 = weight2[0].read().decode("utf-8") 
-        print("Weight2 = " + newweight2 + "kg")
+        print("Weight: \t" + newweight2[:-3] + "kg")
 
 
 
@@ -217,10 +220,11 @@ try:
         r = requests.post(url, verify=False,  json=data)
         
 
-        time.sleep(.3)
+        time.sleep(.5)
             
 except KeyboardInterrupt:
     dev.disconnect()
+    dev2.disconnect()
     exit_event.set()
     time.sleep(.25)
     GPIO.cleanup()
